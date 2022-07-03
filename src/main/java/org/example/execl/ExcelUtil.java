@@ -51,7 +51,7 @@ public class ExcelUtil {
                 row.createCell(4).setCellValue(yueShuJu.项目角色);
             }
         }
-        workbook.removeSheetAt(0);
+        workbook.removeSheetAt(1);
         workbook.write(new FileOutputStream(
                 new File(String.format(targetFilePath, project.name))));
     }
