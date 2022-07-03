@@ -113,7 +113,7 @@ public class ExcelUtil {
         return result;
     }
 
-    private static String getValue(Cell cell) {
+    public static String getValue(Cell cell) {
         String val = "";
         switch (cell.getCellType()) {
             case STRING:   // 字符串类型
@@ -126,6 +126,15 @@ public class ExcelUtil {
                 break;
         }
         return val;
+    }
+
+    public static void removeColumn(Sheet sheet, int column) {
+        for (Row row : sheet) {
+            Cell cell = row.getCell(column);
+            if (cell != null) {
+                row.removeCell(cell);
+            }
+        }
     }
 
 
