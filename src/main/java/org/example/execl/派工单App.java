@@ -19,7 +19,7 @@ public class 派工单App {
 
     public static void main(String[] args) throws Exception {
 
-        List<ExcelUtil.Project> projects = ExcelUtil.readExcel(filePath, sheetName);
+        List<ExcelUtil.Project> projects = ExcelUtil.readExcel(filePath, sheetName, true);
         for (ExcelUtil.Project project : projects) {
             ExcelUtil.writeExcel(targetFilePath, project);
         }

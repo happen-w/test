@@ -1,11 +1,10 @@
 package org.example.execl;
 
+import lombok.Data;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
+import org.apache.poi.xssf.usermodel.XSSFCell;
 import org.apache.poi.xssf.usermodel.XSSFRow;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -15,6 +14,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 import static org.example.execl.派工单App.*;
@@ -57,7 +57,7 @@ public class ExcelUtil {
     }
 
     // 读取EXCEL数据
-    static List<Project> readExcel(String filePath, String sheetName) throws Exception {
+    static List<Project> readExcel(String filePath, String sheetName, boolean isFilter) throws Exception {
         FileInputStream inputStream = new FileInputStream(filePath);
         Workbook workbook = new XSSFWorkbook(inputStream);
 
@@ -82,15 +82,16 @@ public class ExcelUtil {
                     int index = 1;
                     for (int k = region.getFirstRow() + 2; k < lastRowNum; k++) {
                         double number = sheet.getRow(k).getCell(j).getNumericCellValue();
-                        if(number > 0){
-                            String 部门 = getValue(sheet.getRow(k).getCell(0));    // 部门
-                            String 项目角色 = getValue(sheet.getRow(k).getCell(3)); // 项目角色
-                            String 性别 = getValue(sheet.getRow(k).getCell(4)); // 性别
-                            String 姓名 = getValue(sheet.getRow(k).getCell(5)); // 姓名
-                            YueShuJu yueShuJu = new YueShuJu(index, 姓名, 性别, 部门, 项目角色);
-                            yueShuJus.add(yueShuJu);
-                            index++;
+                        if(number < 0 & isFilter){
+                            continue;
                         }
+                        String 部门 = getValue(sheet.getRow(k).getCell(0));    // 部门
+                        String 项目角色 = getValue(sheet.getRow(k).getCell(3)); // 项目角色
+                        String 性别 = getValue(sheet.getRow(k).getCell(4)); // 性别
+                        String 姓名 = getValue(sheet.getRow(k).getCell(5)); // 姓名
+                        YueShuJu yueShuJu = new YueShuJu(index, 姓名, 性别, 部门, 项目角色, number);
+                        yueShuJus.add(yueShuJu);
+                        index++;
                     }
                     if(yueShuJus.size() > 0){
                         project.yueShuJu.put(yuefen, yueShuJus);
@@ -111,6 +112,36 @@ public class ExcelUtil {
             }
         }
         return result;
+    }
+
+    public static Map<String, Map<String,String>> getProjectData(String filePath, String sheetName) throws IOException {
+        XSSFWorkbook projectData = new XSSFWorkbook(new FileInputStream(new File(filePath)));
+        XSSFSheet sheet = projectData.getSheet(sheetName);
+        Map<String, Map<String,String>> map = new HashMap<>();
+        for (int i = 1; i < sheet.getLastRowNum(); i++) {
+            XSSFRow row = sheet.getRow(i);
+            XSSFRow header = sheet.getRow(0);
+            HashMap<String,String> rowData = new HashMap<>();
+            map.put(row.getCell(0).getStringCellValue(), rowData);
+            for (int j = 0; j < row.getLastCellNum(); j++) {
+                String key = header.getCell(j).getStringCellValue();
+                XSSFCell cell = row.getCell(j);
+                if(key.equals("立项时间") ||
+                        key.equals("进入开发时间") ||
+                        key.equals("完成开发时间")){
+                    Date dateCellValue = cell.getDateCellValue();
+                    String val = "";
+                    if(dateCellValue != null) {
+                        SimpleDateFormat sf = new SimpleDateFormat("yyyy-MM-dd");
+                        val =  sf.format(dateCellValue);
+                    }
+                    rowData.put(key, val);
+                }else{
+                    rowData.put(key, ExcelUtil.getValue(cell));
+                }
+            }
+        }
+        return map;
     }
 
     public static String getValue(Cell cell) {
@@ -138,25 +169,29 @@ public class ExcelUtil {
     }
 
 
+    @Data
     static class Project{
         String name;
         String projectCode;
-        Map<String,List<YueShuJu>> yueShuJu = new LinkedHashMap<>();
+        LinkedHashMap<String,List<YueShuJu>> yueShuJu = new LinkedHashMap<>();
     }
 
+    @Data
     static class YueShuJu{
         int index;
         String name;
         String sex;
         String 部门;
         String 项目角色;
+        double number;
 
-        public YueShuJu(int index, String name, String sex, String 部门, String 项目角色) {
+        public YueShuJu(int index, String name, String sex, String 部门, String 项目角色, double number) {
             this.index = index;
             this.name = name;
             this.sex = sex;
             this.部门 = 部门;
             this.项目角色 = 项目角色;
+            this.number = number;
         }
 
         @Override
@@ -168,6 +203,28 @@ public class ExcelUtil {
                     ", 部门='" + 部门 + '\'' +
                     ", 项目角色='" + 项目角色 + '\'' +
                     '}';
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            YueShuJu yueShuJu = (YueShuJu) o;
+
+            if (name != null ? !name.equals(yueShuJu.name) : yueShuJu.name != null) return false;
+            if (sex != null ? !sex.equals(yueShuJu.sex) : yueShuJu.sex != null) return false;
+            if (部门 != null ? !部门.equals(yueShuJu.部门) : yueShuJu.部门 != null) return false;
+            return 项目角色 != null ? 项目角色.equals(yueShuJu.项目角色) : yueShuJu.项目角色 == null;
+        }
+
+        @Override
+        public int hashCode() {
+            int result = name != null ? name.hashCode() : 0;
+            result = 31 * result + (sex != null ? sex.hashCode() : 0);
+            result = 31 * result + (部门 != null ? 部门.hashCode() : 0);
+            result = 31 * result + (项目角色 != null ? 项目角色.hashCode() : 0);
+            return result;
         }
     }
 }
